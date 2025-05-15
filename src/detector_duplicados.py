@@ -8,7 +8,7 @@ def detectar_duplicados(lista_ingresados, lista_no_ingresados, root):
     for lista in [lista_ingresados, lista_no_ingresados]:
         p = lista.Primero
         while p:
-            cedula = p.info.identificacion
+            cedula = p.info.cedula
             if cedula in revisados:
                 duplicados.setdefault(cedula, []).append(p.info)
             else:
@@ -20,7 +20,7 @@ def detectar_duplicados(lista_ingresados, lista_no_ingresados, root):
         return
     
     for cedula, estudiantes in duplicados.items():
-            estudiantes_str = "\n".join([f"{estudiante.identificacion} - {estudiante.nombre}" for estudiante in estudiantes])
+            estudiantes_str = "\n".join([f"{estudiante.cedula} - {estudiante.nombre}" for estudiante in estudiantes])
             messagebox.showinfo("Duplicados", f"Estudiantes duplicados con la cédula {cedula}:\n{estudiantes_str}")
 
   
