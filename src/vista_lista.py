@@ -182,6 +182,9 @@ class VistaListaApp:
 
     def regresar(self):
         self.root.destroy()
+        
+    
+      
 
     def crear_tabla(self, titulo, col):
         frame = tk.Frame(self.frame_tablas)
@@ -214,7 +217,6 @@ class VistaListaApp:
         messagebox.showerror("Error de Validación", "La cédula debe contener solo números.")
         return
 
-     # Validar que la cédula no esté repetida en ninguna lista
      for lista in [self.lista_ingresados, self.lista_no_ingresados]:
         if lista.Buscar(cedula):
             messagebox.showerror("Duplicado", "La cédula ya está registrada.")
@@ -345,7 +347,7 @@ class VistaListaApp:
             self.tree_ingresados.insert('', 'end', values=(
                 estudiante.cedula,
                 estudiante.nombre,
-                estudiante.edad,
+                estudiante.carrera,
                 ', '.join(estudiante.materias),
                 estudiante.uc_aprobadas
             ))
@@ -403,16 +405,6 @@ class VistaListaApp:
             entry.delete(0, tk.END)
         self.lista_destino.set("Ingresados")
 
-    def actualizar_tablas(self):
-        for tree, lista in [(self.tree_ingresados, self.lista_ingresados), (self.tree_no_ingresados, self.lista_no_ingresados)]:
-            for item in tree.get_children():
-                tree.delete(item)
-
-            for estudiante in lista.obtener_todos():
-                tree.insert("", "end", values=(estudiante.cedula, estudiante.nombre, estudiante.carrera, ", ".join(estudiante.materias), estudiante.uc_aprobadas))
-
-        self.contador_ingresados.config(text=f"Total Ingresados: {self.lista_ingresados.obtener_tamano()}")
-        self.contador_no_ingresados.config(text=f"Total No Ingresados: {self.lista_no_ingresados.obtener_tamano()}")
 
     def mover_todos_no_ingresados(self):
         self.lista_ingresados.pasarListaAux(self.lista_no_ingresados, self.lista_ingresados)
@@ -566,10 +558,12 @@ class VistaListaApp:
 
         notebook = ttk.Notebook(reportes_window)
         notebook.pack(fill=tk.BOTH, expand=True)
+        
 
         tab_resumen = ttk.Frame(notebook)
         notebook.add(tab_resumen, text="Resumen General")
         self._crear_tab_resumen(tab_resumen)
+        
 
         tab_carreras = ttk.Frame(notebook)
         notebook.add(tab_carreras, text="Por Carrera")
@@ -578,6 +572,8 @@ class VistaListaApp:
         tab_academica = ttk.Frame(notebook)
         notebook.add(tab_academica, text="Datos Académicos")
         self._crear_tab_academica(tab_academica)
+        
+        
 
     def _crear_tab_resumen(self, parent):
         frame = ttk.Frame(parent)
