@@ -5,7 +5,7 @@ from Lista import Lista
 from collections import defaultdict
 from Identificacion_estudiante import VistaIdentificacion_estudiantes
 from detector_duplicados import detectar_duplicados
-from Pila import Pila  
+from Pila import Pila
 import json
 
 # Diccionario de materias y sus créditos
@@ -598,25 +598,63 @@ class VistaListaApp:
                                                                                                  padx=20)
 
         if total > 0:
-            ttk.Label(metrics_frame, text=f"% Ingresados: {(total_ing / total) * 100:.1f}%", font=('Arial', 12)).grid(
-                row=1, column=1, pady=10)
+            # Porcentaje de INGRESADOS (verde)
+            ttk.Label(
+                metrics_frame,
+                text=f"% Ingresados: {(total_ing / total) * 100:.1f}%",
+                font=('Arial', 12),
+                foreground="#4CAF50"  # Verde del gráfico
+            ).grid(row=1, column=1, padx=20, pady=10)
 
-        if total > 0:
-            canvas = tk.Canvas(frame, width=400, height=300, bg='white')
-            canvas.pack(pady=20)
+            # Porcentaje de NO INGRESADOS (rojo)
+            ttk.Label(
+                metrics_frame,
+                text=f"% No Ingresados: {(total_no_ing / total) * 100:.1f}%",
+                font=('Arial', 12),
+                foreground="#F44336"  # Rojo del gráfico
+            ).grid(row=1, column=2, padx=20, pady=10)
+
+            # Frame para contener el gráfico y asegurar que no se desborde
+            graph_frame = ttk.Frame(frame)
+            graph_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+            # Canvas con tamaño fijo más pequeño
+            canvas = tk.Canvas(graph_frame, width=300, height=250, bg='white')
+            canvas.pack(pady=10)
+
+            # Coordenadas del gráfico (ajustadas para el nuevo tamaño)
+            center_x, center_y = 150, 125
+            radius = 100
 
             start_angle = 0
             extent_ing = (total_ing / total) * 360
             extent_no_ing = (total_no_ing / total) * 360
 
-            canvas.create_arc(50, 50, 350, 350, start=start_angle, extent=extent_ing, fill="#4CAF50", outline="white")
-            canvas.create_arc(50, 50, 350, 350, start=start_angle + extent_ing, extent=extent_no_ing, fill="#F44336",
-                              outline="white")
+            # Dibujar el gráfico de torta
+            canvas.create_arc(
+                center_x - radius, center_y - radius,
+                center_x + radius, center_y + radius,
+                start=start_angle, extent=extent_ing,
+                fill="#4CAF50", outline="white"
+            )
+            canvas.create_arc(
+                center_x - radius, center_y - radius,
+                center_x + radius, center_y + radius,
+                start=start_angle + extent_ing, extent=extent_no_ing,
+                fill="#F44336", outline="white"
+            )
 
-            canvas.create_text(200, 400, text=f"Ingresados: {total_ing} ({extent_ing / 3.6:.1f}%)", fill="#4CAF50",
-                               font=('Arial', 10))
-            canvas.create_text(200, 420, text=f"No Ingresados: {total_no_ing} ({extent_no_ing / 3.6:.1f}%)",
-                               fill="#F44336", font=('Arial', 10))
+            # Leyenda
+            canvas.create_text(
+                center_x, center_y + radius + 20,
+                text=f"Ingresados: {total_ing} ({extent_ing / 3.6:.1f}%)",
+                fill="#4CAF50", font=('Arial', 10)
+            )
+            canvas.create_text(
+                center_x, center_y + radius + 40,
+                text=f"No Ingresados: {total_no_ing} ({extent_no_ing / 3.6:.1f}%)",
+                fill="#F44336", font=('Arial', 10)
+            )
 
     def _crear_tab_carreras(self, parent):
         frame = ttk.Frame(parent)
@@ -689,47 +727,72 @@ class VistaListaApp:
         frame = ttk.Frame(parent)
         frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        materias = {}
+        ttk.Label(frame, text="DATOS ACADÉMICOS", font=('Arial', 14, 'bold')).pack(pady=10)
+
+        # --- 1. Tabla de frecuencia de materias (nueva) ---
+        frame_frecuencia = ttk.LabelFrame(frame, text="Materias Inscritas (Frecuencia)")
+        frame_frecuencia.pack(fill=tk.X, padx=10, pady=5)
+
+        tree_frecuencia = ttk.Treeview(frame_frecuencia, columns=("Materia", "Créditos", "Estudiantes"),
+                                       show="headings")
+        tree_frecuencia.heading("Materia", text="Materia")
+        tree_frecuencia.heading("Créditos", text="Créditos")
+        tree_frecuencia.heading("Estudiantes", text="Estudiantes")
+        tree_frecuencia.column("Materia", width=200)
+        tree_frecuencia.column("Créditos", width=80, anchor="center")
+        tree_frecuencia.column("Estudiantes", width=100, anchor="center")
+        tree_frecuencia.pack(fill=tk.X, padx=10, pady=5)
+
+        # Contar estudiantes por materia
+        frecuencia_materias = {}
         actual = self.lista_ingresados.Primero
         while actual:
             for materia in actual.info.materias:
-                if materia not in materias:
-                    materias[materia] = 0
-                materias[materia] += 1
+                frecuencia_materias[materia] = frecuencia_materias.get(materia, 0) + 1
             actual = actual.prox
 
-        ttk.Label(frame, text="DATOS ACADÉMICOS", font=('Arial', 14, 'bold')).pack(pady=10)
+        # Llenar tabla (ordenada por frecuencia)
+        for materia, estudiantes in sorted(frecuencia_materias.items(), key=lambda x: x[1], reverse=True):
+            creditos = MATERIAS_CREDITOS.get(materia, "N/A")
+            tree_frecuencia.insert("", "end", values=(materia, creditos, estudiantes))
 
-        for materia, cantidad in materias.items():
-            ttk.Label(frame, text=f"{materia}: {cantidad} estudiantes", font=('Arial', 12)).pack(anchor="w", padx=10)
+        # --- 2. Créditos por estudiante (sección existente) ---
+        frame_creditos = ttk.LabelFrame(frame, text="Créditos Totales por Estudiante")
+        frame_creditos.pack(fill=tk.X, padx=10, pady=5)
 
-    def guardar_datos_temporales(self):
-        """Guarda los datos de los estudiantes en un archivo JSON temporal."""
-        datos = {
-            "ingresados": [
-                {
-                    "cedula": estudiante.cedula,
-                    "nombre": estudiante.nombre,
-                    "carrera": estudiante.carrera,
-                    "materias": estudiante.materias,
-                    "uc_aprobadas": estudiante.uc_aprobadas
-                }
-                for estudiante in self.lista_ingresados.obtener_todos()
-            ],
-            "no_ingresados": [
-                {
-                    "cedula": estudiante.identificacion,
-                    "nombre": estudiante.nombre,
-                    "carrera": estudiante.carrera,
-                    "materias": estudiante.materias,
-                    "uc_aprobadas": estudiante.uc_aprobadas
-                }
-                for estudiante in self.lista_no_ingresados.obtener_todos()
-            ]
-        }
-        with open(TEMP_FILE, "w") as file:
-            json.dump(datos, file)
+        tree_creditos = ttk.Treeview(frame_creditos, columns=("Estudiante", "Créditos"), show="headings")
+        tree_creditos.heading("Estudiante", text="Estudiante (Cédula)")
+        tree_creditos.heading("Créditos", text="Créditos")
+        tree_creditos.column("Estudiante", width=250)
+        tree_creditos.column("Créditos", width=100, anchor="center")
+        tree_creditos.pack(fill=tk.X, padx=10, pady=5)
 
+        # Llenar tabla de créditos por estudiante
+        actual = self.lista_ingresados.Primero
+        while actual:
+            estudiante = actual.info
+            creditos_totales = sum(MATERIAS_CREDITOS.get(materia, 0) for materia in estudiante.materias)
+            tree_creditos.insert("", "end", values=(
+                f"{estudiante.nombre} ({estudiante.cedula})",
+                creditos_totales
+            ))
+            actual = actual.prox
+
+        # --- 3. Resumen de créditos (existente) ---
+        frame_resumen = ttk.LabelFrame(frame, text="Resumen de Créditos")
+        frame_resumen.pack(fill=tk.X, padx=10, pady=5)
+
+        total_creditos = sum(
+            MATERIAS_CREDITOS.get(materia, 0)
+            for estudiante in self.lista_ingresados.obtener_todos()
+            for materia in estudiante.materias
+        )
+        promedio_creditos = total_creditos / self.lista_ingresados.Contar() if self.lista_ingresados.Contar() > 0 else 0
+
+        ttk.Label(frame_resumen, text=f"Total de créditos inscritos: {total_creditos}", font=('Arial', 10)).pack(
+            anchor="w", padx=5, pady=2)
+        ttk.Label(frame_resumen, text=f"Promedio de créditos por estudiante: {promedio_creditos:.1f}",
+                  font=('Arial', 10)).pack(anchor="w", padx=5, pady=2)
     def cargar_datos_temporales(self):
         """Carga los datos de los estudiantes desde un archivo JSON temporal."""
         try:
